@@ -1,0 +1,12 @@
+*
+!*/
+!.gitignore
+
+# Build script
+!bin/Makefile
+
+# Application code
+!src/[a-z]*.[ch]
+
+# Documentation
+!README.md
