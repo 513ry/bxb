@@ -22,7 +22,7 @@ all: clean development
 
 # --- TASKS ---
 production: $(source)
-	echo "Building production ELF" $(shell date --iso-8601=seconds) >> $(log)
+	echo "Building production ELF $(shell date --iso-8601=seconds)" >> $(log)
 	$(CC) -o $(object) $^ $(CCFLAGS) $(OPTIOM)
 	echo "DONE" >> $(log)
 
@@ -32,8 +32,14 @@ development: $(source)
 	echo "DONE" >> $(log)
 
 clean: ;rm -rf $(object) *.exe *.o
-	echo "Clean build the directory" >> $(log)
+	echo "Cleaned the build directory" >> $(log)
 
 # Those methods will need root access
 clean_assets:
 	rm -rf *.log ../assets/*crowimage* /bin/$(object)
+	echo "Cleaned the installation assets" >> $(log)
+
+install: clean production
+	echo "Intalling program to the system" >> $(log)
+	cp $(object) /bin/
+
