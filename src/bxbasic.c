@@ -41,8 +41,8 @@
 #include "error.h"
 
 /* --- Some Top Level Constants --- */
-#define BUFSIZE    81
-#define LINE_NUM   6
+#define BUFSIZE    96
+#define SYMSIZE    6
 #define TOKEN_LEN  21
 #define MAX_ARGS   1
 
@@ -52,7 +52,7 @@ FILE *f_in, *f_out;            // I/O file handlers
 char *script_name;             // Processed source-file name
 char line[BUFSIZE];            // Currently parsed line
 char **p_script;               // Pointer to code array
-char **p_lines;                // Pointer to symbol array
+char **p_lines;                // Pointer to symbol/index array
 // char tok_holder[20];           // Token data holder
 // char buf_holder[BUFSIZE];      // xstring (print) data holder
 char token[TOKEN_LEN];         // The token string
@@ -119,11 +119,15 @@ main(int argc, char **argv) {
   if (!rmenu(argc, argv[1])) {
     ;;
   } else {
-    // strcpy(tok_holder, arg);
+    printf("Running %s..\n", PROG_NAME);
+    
+    // strcpy(token, argv[1]);
     line_cnt(argv);
     load_script();
+    
+    /*** Run the parser's main loop ***/
+    pgm_parser();
   }
-  
   return EXIT_SUCCESS;
 }
 
@@ -133,7 +137,7 @@ pgm_parser(void) {
   line_index = 0;
   
   while (line_index < nrows) {
-    //start_ref = end_ref = 0;    // UNLINKED YET
+    // start_ref = end_ref = 0;
     get_token();
     parser();
     ++line_index;
@@ -146,19 +150,19 @@ parser(void) {
   int ab_code;
   
   ab_code = 4;
-
+  
   // TDOO: That conditioning is not efficient at all
   if (strcmp(token, "REM") == 0) {
     ;;
-  /* } else if (strcmp(token, "PRINT") == 0) { */
-  /*   xstring_array(); */
-  /*   get_prnstring(); */
-  /* } else if (strcmp(token, "GOTO") == 0) { */
-  /*   go_to(); */
-  /* } else if (strcmp(token, "BEEP") == 0) { */
-  /*   beep(); */
-  /* } else if (strcmp(token, "CLS") == 0) { */
-  /*   cls(); */
+  } else if (strcmp(token, "PRINT") == 0) {
+    xstring_array();
+    get_prnstring();
+  } else if (strcmp(token, "GOTO") == 0) {
+    go_to();
+  } else if (strcmp(token, "BEEP") == 0) {
+    beep();
+  } else if (strcmp(token, "CLS") == 0) {
+    cls();
   } else if (strcmp(token, "END") == 0) {
     printf("\nProgram execution has ended\n");
     line_index = nrows;
@@ -181,10 +185,12 @@ get_token(void) {
   strcpy(line, p_script[line_index]);
   slen = strlen(line);
   c = line[pi];
+  //printf("BUFFER: %s", p_script[line_index]);
   
   // Point the first uppercase character
   while (!isupper(c) && (pi < slen))
     c = line[++pi];
+
   // Aboard when no uppercase character found
   if (pi == slen)
     a_bort(ab_code, line_index);
@@ -196,43 +202,56 @@ get_token(void) {
   }
   // Null terminated token
   token[ti] = '\0';
-  printf("%i: %s\n", line_index, token);
 }
 
-// Load and store the script pointer
+// Fetch lines data from the file to p_script pointer
 void
 load_script(void) {
   uint index, len, pi;
-  char ln_holder[LINE_NUM], c;
+  char sym_holder[SYMSIZE], c;
 
-  fprintf(stderr, "Loading up script to the memory..\n");
+  fprintf(stderr, "Loading up script to the program array..\n");
   
   // Allocate data for script and symbol array
-  p_script = p_lines = malloc(nrows * sizeof(char *));
+  /// This get NOT freed anywhere yet
+  /// TODO: Write a GC and remove this loop from here!!!
+  p_script = malloc(nrows * sizeof(char *));
+  p_lines = malloc(nrows * sizeof(char *));
   for (index = 0; index < nrows; ++index) {
     p_script[index] = malloc(ncolumns * sizeof(char));
-    p_lines[index] = malloc(LINE_NUM * sizeof(char));
+    p_lines[index] = malloc(SYMSIZE * sizeof(char));
   }
+  
   // --- Start reading conent from the file ---
   f_in = fopen(script_name, "r");
   index = 0;
-  
   while (fgets(line, BUFSIZE, f_in)) {
-    // Pass line to p_script poining array
+    // Pass the whole buffer to p_script (program array)
     len = sizeof(line);
-    strcpy(p_script[index], line);
+   
+    strncpy(p_script[index], line, len);
     p_script[index][len] = '\0';         // Terminate the line
+
+    // Store symbols array
     pi = 0;
     c = line[pi];
     while (isdigit(c)) {
-      ln_holder[pi] = c;
+      sym_holder[pi] = c;
       c = line[++pi];
     }
-    ln_holder[pi] = '\0';                // Terminate the symbol
-    strcpy(p_lines[index], ln_holder);
+    sym_holder[pi] = '\0';               // Terminate the symbol
+    strncpy(p_lines[index], sym_holder, SYMSIZE);
+    
     ++index;
-    printf("%s", line);
   }
+
+  printf("Print formated script array:\n");
+  printf("--------------------------------\n");
+  for (uint iy = 0; iy < nrows; ++iy) {
+    printf("%s", p_script[iy]);
+  }
+  printf("--------------------------------\n");
+  
   fclose(f_in);
 }
 
@@ -261,4 +280,24 @@ line_cnt(char *argv[]) {
   }
   
   nrows = line_counter;
+}
+
+void beep(void) {
+  printf("[beep]\a\n");
+}
+
+void cls(void) {
+  printf("[cls]\n");
+}
+
+void xstring_array(void) {
+  printf("[xstring_array]\n");
+}
+
+void get_prnstring(void) {
+  printf("[get_prnstring]\n");
+}
+
+void go_to(void) {
+  printf("[go_to]\n");
 }

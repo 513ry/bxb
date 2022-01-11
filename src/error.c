@@ -8,13 +8,12 @@
 
 #define NEWWAR(message)				\
   fprintf(stderr, "WARNING: %s\n", message);	\
-  fatal = FALSE;				\
+  fatal = TRUE;					\
   break;
 #define NEWERR(message)				\
   fprintf(stderr, "ERROR: %s\n", message);	\
   break;
 
-// Detect parser errors and syntax warnings
 void
 a_bort(int code, uint line_index) {
   _Bool fatal;
@@ -23,7 +22,7 @@ a_bort(int code, uint line_index) {
   
   // Detected error type in return code ranges
   if (code <= ERR_PARSER && code > 0) {
-    about.usage();
+    // about.usage();
     fprintf(stderr, "(ParserError) ");
   } else if (code <= ERR_SYNTAX && code > ERR_PARSER) {
     printf("Failed to parse script at line %u.\n", line_index);
