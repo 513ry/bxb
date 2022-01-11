@@ -26,8 +26,6 @@
 
 /* Program Meta */
 #define GCC
-#define VERSION "0.1"
-#define PROG_NAME "bx64"
 
 /* --- Declare Headers --- */
 #include <stdio.h>
@@ -39,70 +37,14 @@
 #include <string.h>
 #include <errno.h>
 
-#define TRUE       1
-#define FALSE      0
-
-/* --- User Help Interface (menu.c) --- */
-char *OPTIONS[] =  {"-v", "-h"};
-char *DESCRIP[] =  {"Print program version", "Print this help screen"};
- 
-static void
-print_options(_Bool description) {
-  uint opt_len;
-
-  opt_len = (sizeof OPTIONS / sizeof *OPTIONS);
-  
-  for (uint index = 0; index < opt_len; ++index)
-    if (description)
-      printf("%s: %s", OPTIONS[index], DESCRIP[index]) && putchar('\n');
-    else
-      printf(" [%s]", OPTIONS[index]);
-  if (!description)
-    putchar('\n');
-}
-
-// Return n of space characters
-static char *
-space(uint n) {
-  char *spaces;
-
-  spaces = malloc(sizeof(char) * n);
-  for (uint index = 0; index == n; ++index)
-    spaces[index] = ' ';
-  
-  return spaces;
-}
-
-// bxb64 just parses files for now
-static void
-usage(void) {
-  printf("Usage: bxb64 source_file.bxb\n%sbxb64", space(4));
-  print_options(FALSE);
-}
-
-static void
-version(void) {
-  printf("%s\n", PROG_NAME " v." VERSION);
-}
-
-static void
-help(void) {
-  usage();
-  print_options(TRUE);
-    
-  printf("\nBXB64 is BXBasic rewritten from PowerC 32bit compiler to GCC in the spirit\n" \
-         "of QDepartment.\n");
-}
+#include "bool.h"
+#include "error.h"
 
 /* --- Some Top Level Constants --- */
 #define BUFSIZE    81
 #define LINE_NUM   6
 #define TOKEN_LEN  21
 #define MAX_ARGS   1
-
-/* --- Error Codes Ranges (0..n, n..n') --- */
-#define ERR_PARSER 10
-#define ERR_SYNTAX 20
 
 // TODO: Do NOT implement a real stack, at this point an array is enough.
 /* --- Global Variables ------------------------------ */
@@ -136,7 +78,7 @@ void xstring_array(void);
 void get_prnstring(void);
 void go_to(void);
 
-// Run menu options and/or return the condition
+// Run menu options and return the condition
 static uint8_t
 menu_condition(uint argc, char *arg) {
   uint8_t run_prog;
@@ -145,26 +87,27 @@ menu_condition(uint argc, char *arg) {
   
   if (argc > MAX_ARGS + 1)
     run_prog = 2;
-  else if (argc == 1 || strcmp(arg, OPTIONS[1]) == 0) {
-    help();
+  else if (argc == 1 || strcmp(arg, about.options[1]) == 0) {
+    about.help();
     run_prog = FALSE;
-  } else if (strcmp(arg, OPTIONS[0]) == 0) {
-    version();
+  } else if (strcmp(arg, about.options[0]) == 0) {
+    about.version();
     run_prog = FALSE;
   }
   
   return run_prog;
 }
 
+// Will return the program 'done?' condition or abort argument count exception
 static _Bool
 rmenu(uint argc, char *arg) {
   int ab_code;
   uint8_t ret;
   
   ab_code = 1;
-  
+
+  // abort on exception
   if ((ret = menu_condition(argc, arg)) == 2)
-    // Exit if too many arguments passed
     a_bort(ab_code, 0);
 
   return ret;
@@ -190,24 +133,24 @@ pgm_parser(void) {
   line_index = 0;
   
   while (line_index < nrows) {
-    start_ref = end_ref = 0;    // UNLINKED YET
+    //start_ref = end_ref = 0;    // UNLINKED YET
     get_token();
     parser();
     ++line_index;
   }
 }
 
-// Parse last processed token
+// Parse the last processed token
 void
 parser(void) {
   int ab_code;
   
   ab_code = 4;
-  
+
+  // TDOO: That conditioning is not efficient at all
   if (strcmp(token, "REM") == 0) {
     ;;
-  }
-  /* else if (strcmp(token, "PRINT") == 0) { */
+  /* } else if (strcmp(token, "PRINT") == 0) { */
   /*   xstring_array(); */
   /*   get_prnstring(); */
   /* } else if (strcmp(token, "GOTO") == 0) { */
@@ -216,8 +159,8 @@ parser(void) {
   /*   beep(); */
   /* } else if (strcmp(token, "CLS") == 0) { */
   /*   cls(); */
-  else if (strcmp(token, "END") == 0) {
-    printf("\nEnd of Program\n");
+  } else if (strcmp(token, "END") == 0) {
+    printf("\nProgram execution has ended\n");
     line_index = nrows;
   } else {
     a_bort(ab_code, line_index);
@@ -239,9 +182,7 @@ get_token(void) {
   slen = strlen(line);
   c = line[pi];
   
-   // NOTE: Trivial syntactical assumptions. Better allocate index first and then
-  // token, separated by space.
-  // Find first uppercase character
+  // Point the first uppercase character
   while (!isupper(c) && (pi < slen))
     c = line[++pi];
   // Aboard when no uppercase character found
@@ -255,6 +196,7 @@ get_token(void) {
   }
   // Null terminated token
   token[ti] = '\0';
+  printf("%i: %s\n", line_index, token);
 }
 
 // Load and store the script pointer
@@ -319,50 +261,4 @@ line_cnt(char *argv[]) {
   }
   
   nrows = line_counter;
-}
-
-#define NEWWAR(message)				\
-  fprintf(stderr, "WARNING: %s\n", message);	\
-  fatal = FALSE;				\
-  break;
-#define NEWERR(message)				\
-  fprintf(stderr, "ERROR: %s\n", message);	\
-  break;
-
-// Detect parser errors and syntax warnings
-void
-a_bort(int code, uint line_index) {
-  _Bool fatal;
-
-  fatal = TRUE;
-  
-  // Detected error type in return code ranges
-  if (code <= ERR_PARSER && code > 0) {
-    usage();
-    fprintf(stderr, "(ParserError) ");
-  } else if (code <= ERR_SYNTAX && code > ERR_PARSER) {
-    printf("Failed to parse script at line %u.\n", line_index);
-    fprintf(stderr, "(SyntaxError) ");
-  } else
-    fprintf(stderr, "(UnknownError)");
-  
-  // Specify error description
-  switch(code) {
-  case 1:
-    NEWERR("Too many arguments passed.");
-  case 2:
-    NEWERR("File not found.");
-  case 3:
-    NEWWAR("Keywords must be passed as UPPERCASE.");
-  case 4:
-    NEWWAR("BX Command unknown.");
-  default:
-    NEWERR("Program aboard, unknown error.");
-  }
-  
-  // Print error code and location (directly in the parser code)
-  fprintf(stderr, "(%s:%i) %s has retured status %i.\n", __FILE__, __LINE__, __func__, code);
-  
-  if (fatal)
-    exit(code);
 }

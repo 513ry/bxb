@@ -1,30 +1,39 @@
 # Application
-object   = bxb64
-source   = ../src/[a-z]*.c
+object   := bx64
+source   := ../src/[a-z]*.c
 
 # Meta
-log      = make.log
+log      := make.log
 
 # Compilation
-CC       = gcc
-LIBS     = -lrt
-CCFLAGS  = -std=c17 -D_GNU_SOURCE -pedantic
+CC       := gcc
+CCFLAGS  := -std=c17 -D_GNU_SOURCE -pedantic
 
-OPTIM    = -O3
-DEBUG    = $(CCFLAGS) -Og -Wall -g
+# TODO: 
 
-# Set default task
-all: development
+LIBS     := -lrt
+
+OPTIM    := -O3
+DEBUG    := $(CCFLAGS) -g -Og -W -Wall -Wextra
+
+.PHONY: all production development cpp clean clean_all
+
+all: clean development
 
 # --- TASKS ---
 production: $(source)
-	echo "Building production ELF.." > $(log)
+	echo "Building production ELF" $(shell date --iso-8601=seconds) >> $(log)
 	$(CC) -o $(object) $^ $(CCFLAGS) $(OPTIOM)
+	echo "DONE" >> $(log)
 
 development: $(source)
-	echo "Building development ELF.." > $(log)
-	$(CC) -o $(object) $^ $(DEBUG)
+	echo "Building development ELF $(shell date --iso-8601=seconds)" >> $(log)
+	$(CC) -o $(object) $^ $(DEBUG) 2>> $(log)
+	echo "DONE" >> $(log)
 
-.PHONY: clean
-clean: ;rm -f $(object)
-	rm -f $(log)
+clean: ;rm -rf $(object) *.exe *.o
+	echo "Clean build the directory" >> $(log)
+
+# Those methods will need root access
+clean_assets:
+	rm -rf *.log ../assets/*crowimage* /bin/$(object)
